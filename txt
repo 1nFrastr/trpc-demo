@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <script type="module" src="/@vite/client"></script>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>Dashboard · Vite SSR 流式 HTML</title>
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                margin: 0;
+                line-height: 1.5;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="app">
+            <div style="display:flex;min-height:100vh;background:#f9fafb">
+                <style>
+                    @keyframes dashSk {
+                        0% {
+                            background-position: 200% 0;
+                        }
+
+                        100% {
+                            background-position: -200% 0;
+                        }
+                    }
+
+                    @media (min-width: 900px) {
+                        .dashLower {
+                            grid-template-columns: 1.4fr 1fr !important;
+                        }
+                    }
+                </style>
+                <aside style="width:200px;flex-shrink:0;background:#1e293b;color:#e2e8f0;padding:24px;font-size:14px">
+                    <div style="font-weight:700;margin-bottom:24px;font-size:16px">Acme</div>
+                    <nav style="display:flex;flex-direction:column;gap:8px">
+                        <div style="padding:8px 12px;border-radius:6px;background:rgba(255,255,255,0.1)">Dashboard</div>
+                        <div style="padding:8px 12px;border-radius:6px;background:transparent">Invoices</div>
+                        <div style="padding:8px 12px;border-radius:6px;background:transparent">Customers</div>
+                    </nav>
+                </aside>
+                <div style="flex:1;padding:32px 40px;max-width:1100px">
+                    <h1 style="margin:0 0 8px;font-size:28px;font-weight:700;color:#111827;font-family:Georgia, &#x27;Times New Roman&#x27;, serif">Dashboard</h1>
+                    <p style="margin:0 0 24px;color:#6b7280;font-size:14px;max-width:720px;line-height:1.65">
+                        <strong>不</strong>
+                        在发 HTML 前阻塞拉齐全部数据：各区块在 SSR 里并行 <code style="font-size:13px">import</code>
+                        <code style="font-size:13px">dashboard-data</code>
+                        ，先流式出壳与骨架，再分段补全。流结束后在
+                        <!-- -->
+                        <code style="font-size:13px">onAllReady</code>
+                        把本次解析结果写入
+                        <!-- -->
+                        <code style="font-size:13px">window.__DASHBOARD__</code>
+                        ，hydrate 时<strong>首屏 0 次</strong>
+                        <code style="font-size:13px">/api</code>
+                        （无快照时才回退 fetch）。
+                    </p>
+                    <section style="margin-bottom:24px">
+                        <!--$?-->
+                        <template id="B:0"></template>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:16px" aria-busy="true">
+                            <div style="border-radius:8px;padding:16px;background:#fff;border:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+                                <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:12px;width:55%;border-radius:4px;margin-bottom:12px"></div>
+                                <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:28px;width:40%;border-radius:4px"></div>
+                            </div>
+                            <div style="border-radius:8px;padding:16px;background:#fff;border:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+                                <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:12px;width:55%;border-radius:4px;margin-bottom:12px"></div>
+                                <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:28px;width:40%;border-radius:4px"></div>
+                            </div>
+                            <div style="border-radius:8px;padding:16px;background:#fff;border:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+                                <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:12px;width:55%;border-radius:4px;margin-bottom:12px"></div>
+                                <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:28px;width:40%;border-radius:4px"></div>
+                            </div>
+                            <div style="border-radius:8px;padding:16px;background:#fff;border:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+                                <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:12px;width:55%;border-radius:4px;margin-bottom:12px"></div>
+                                <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:28px;width:40%;border-radius:4px"></div>
+                            </div>
+                        </div>
+                        <!--/$-->
+                    </section>
+                    <div class="dashLower" style="display:grid;grid-template-columns:1fr;gap:24px">
+                        <!--$?-->
+                        <template id="B:1"></template>
+                        <div style="border-radius:8px;padding:20px;background:#fff;border:1px solid #e5e7eb;min-height:280px" aria-busy="true">
+                            <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:14px;width:35%;border-radius:4px;margin-bottom:20px"></div>
+                            <div style="display:flex;align-items:flex-end;gap:8px;height:200px">
+                                <div style="flex:1;height:40%;border-radius:4px;background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite"></div>
+                                <div style="flex:1;height:65%;border-radius:4px;background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite"></div>
+                                <div style="flex:1;height:35%;border-radius:4px;background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite"></div>
+                                <div style="flex:1;height:80%;border-radius:4px;background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite"></div>
+                                <div style="flex:1;height:55%;border-radius:4px;background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite"></div>
+                                <div style="flex:1;height:90%;border-radius:4px;background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite"></div>
+                            </div>
+                        </div>
+                        <!--/$-->
+                        <!--$?-->
+                        <template id="B:2"></template>
+                        <div style="border-radius:8px;padding:16px;background:#fff;border:1px solid #e5e7eb;min-height:280px" aria-busy="true">
+                            <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:14px;width:45%;border-radius:4px;margin-bottom:16px"></div>
+                            <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center">
+                                <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;width:40px;height:40px;border-radius:50%"></div>
+                                <div style="flex:1">
+                                    <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:10px;width:50%;border-radius:4px;margin-bottom:8px"></div>
+                                    <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:8px;width:35%;border-radius:4px"></div>
+                                </div>
+                                <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:14px;width:56px;border-radius:4px"></div>
+                            </div>
+                            <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center">
+                                <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;width:40px;height:40px;border-radius:50%"></div>
+                                <div style="flex:1">
+                                    <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:10px;width:50%;border-radius:4px;margin-bottom:8px"></div>
+                                    <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:8px;width:35%;border-radius:4px"></div>
+                                </div>
+                                <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:14px;width:56px;border-radius:4px"></div>
+                            </div>
+                            <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center">
+                                <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;width:40px;height:40px;border-radius:50%"></div>
+                                <div style="flex:1">
+                                    <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:10px;width:50%;border-radius:4px;margin-bottom:8px"></div>
+                                    <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:8px;width:35%;border-radius:4px"></div>
+                                </div>
+                                <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:14px;width:56px;border-radius:4px"></div>
+                            </div>
+                            <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center">
+                                <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;width:40px;height:40px;border-radius:50%"></div>
+                                <div style="flex:1">
+                                    <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:10px;width:50%;border-radius:4px;margin-bottom:8px"></div>
+                                    <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:8px;width:35%;border-radius:4px"></div>
+                                </div>
+                                <div style="background:linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%);background-size:200% 100%;animation:dashSk 1.2s ease-in-out infinite;height:14px;width:56px;border-radius:4px"></div>
+                            </div>
+                        </div>
+                        <!--/$-->
+                    </div>
+                </div>
+            </div>
+            <script>
+                requestAnimationFrame(function() {
+                    $RT = performance.now()
+                });
+            </script>
+            <div hidden id="S:0">
+                <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:16px">
+                    <div style="border-radius:8px;padding:16px;background:#fff;border:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+                        <div style="font-size:13px;color:#6b7280;margin-bottom:8px">Collected</div>
+                        <div style="font-size:22px;font-weight:700;color:#111827">$1250</div>
+                    </div>
+                    <div style="border-radius:8px;padding:16px;background:#fff;border:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+                        <div style="font-size:13px;color:#6b7280;margin-bottom:8px">Pending</div>
+                        <div style="font-size:22px;font-weight:700;color:#111827">$800</div>
+                    </div>
+                    <div style="border-radius:8px;padding:16px;background:#fff;border:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+                        <div style="font-size:13px;color:#6b7280;margin-bottom:8px">Total Invoices</div>
+                        <div style="font-size:22px;font-weight:700;color:#111827">12</div>
+                    </div>
+                    <div style="border-radius:8px;padding:16px;background:#fff;border:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+                        <div style="font-size:13px;color:#6b7280;margin-bottom:8px">Total Customers</div>
+                        <div style="font-size:22px;font-weight:700;color:#111827">8</div>
+                    </div>
+                </div>
+            </div>
+            <script>
+                $RB = [];
+                $RV = function(a) {
+                    $RT = performance.now();
+                    for (var b = 0; b < a.length; b += 2) {
+                        var c = a[b]
+                          , e = a[b + 1];
+                        null !== e.parentNode && e.parentNode.removeChild(e);
+                        var f = c.parentNode;
+                        if (f) {
+                            var g = c.previousSibling
+                              , h = 0;
+                            do {
+                                if (c && 8 === c.nodeType) {
+                                    var d = c.data;
+                                    if ("/$" === d || "/&" === d)
+                                        if (0 === h)
+                                            break;
+                                        else
+                                            h--;
+                                    else
+                                        "$" !== d && "$?" !== d && "$~" !== d && "$!" !== d && "&" !== d || h++
+                                }
+                                d = c.nextSibling;
+                                f.removeChild(c);
+                                c = d
+                            } while (c);
+                            for (; e.firstChild; )
+                                f.insertBefore(e.firstChild, c);
+                            g.data = "$";
+                            g._reactRetry && requestAnimationFrame(g._reactRetry)
+                        }
+                    }
+                    a.length = 0
+                }
+                ;
+                $RC = function(a, b) {
+                    if (b = document.getElementById(b))
+                        (a = document.getElementById(a)) ? (a.previousSibling.data = "$~",
+                        $RB.push(a, b),
+                        2 === $RB.length && ("number" !== typeof $RT ? requestAnimationFrame($RV.bind(null, $RB)) : (a = performance.now(),
+                        setTimeout($RV.bind(null, $RB), 2300 > a && 2E3 < a ? 2300 - a : $RT + 300 - a)))) : b.parentNode.removeChild(b)
+                }
+                ;
+                $RC("B:0", "S:0")
+            </script>
