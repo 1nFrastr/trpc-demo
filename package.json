@@ -1,11 +1,10 @@
 {
-  "name": "trpc-demo",
+  "name": "vite-ssr-streaming-demo",
   "version": "1.0.0",
-  "description": "",
+  "description": "Vite + React SSR streaming demo (no Next / no tRPC)",
   "main": "index.js",
   "scripts": {
-    "dev:server": "tsx server/index.ts",
-    "dev:client": "tsx client/index.ts",
+    "dev:cli": "tsx client/index.ts",
     "dev:web": "tsx server/ssr.ts",
     "typecheck": "tsc --noEmit"
   },
@@ -14,12 +13,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@trpc/client": "^11.15.0",
-    "@trpc/react-query": "^11.15.0",
-    "@trpc/server": "^11.15.0",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "zod": "^4.3.6"
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

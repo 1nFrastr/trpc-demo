@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createServer } from "node:http";
 import { createServer as createViteServer } from "vite";
+import { handleApi } from "./api-handlers.js";
 
 const projectRoot = process.cwd();
 const webPort = Number(process.env.WEB_PORT ?? process.env.PORT ?? "5173");
@@ -20,30 +21,54 @@ async function start() {
   });
 
   const server = createServer((req, res) => {
-    vite.middlewares(req, res, async () => {
-      const url = req.url ?? "/";
+    const url = req.url ?? "/";
+    const pathname = new URL(url, "http://127.0.0.1").pathname;
 
+    if (pathname.startsWith("/api/")) {
+      void (async () => {
+        try {
+          const handled = await handleApi(req, res, pathname);
+          if (!handled) {
+            res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+            res.end("Not Found");
+          }
+        } catch (e) {
+          res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
+          res.end(e instanceof Error ? e.message : "error");
+        }
+      })();
+      return;
+    }
+
+    vite.middlewares(req, res, async () => {
       try {
         const templatePath = path.resolve(projectRoot, "client/index.html");
         let template = await fs.readFile(templatePath, "utf-8");
         template = await vite.transformIndexHtml(url, template);
 
-        const { render } = await vite.ssrLoadModule("/client/entry-server.tsx");
-        const { appHtml, dehydratedState } = await render(url);
-        const dehydratedScript = `<script>window.__TRPC_DEHYDRATED_STATE__=${JSON.stringify(
-          dehydratedState,
-        ).replace(/</g, "\\u003c")}</script>`;
-        const html = template
-          .replace("<!--ssr-outlet-->", appHtml)
-          .replace("</body>", `${dehydratedScript}</body>`);
+        const marker = "<!--ssr-outlet-->";
+        const i = template.indexOf(marker);
+        if (i === -1) {
+          throw new Error("client/index.html 缺少 <!--ssr-outlet-->");
+        }
+        const shellBefore = template.slice(0, i);
+        const shellAfter = template.slice(i + marker.length);
 
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-        res.end(html);
+        const { resetSsrDashboardCapture } = await vite.ssrLoadModule("/client/loaders.ts");
+        resetSsrDashboardCapture();
+
+        const { streamRender } = await vite.ssrLoadModule("/client/entry-server.tsx");
+        await streamRender(res, shellBefore, shellAfter);
       } catch (error) {
         vite.ssrFixStacktrace(error as Error);
         const message = error instanceof Error ? error.stack ?? error.message : "SSR Error";
-        res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
+        if (!res.headersSent) {
+          res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
+        }
         res.end(message);
+      } finally {
+        const g = globalThis as unknown as Record<string, unknown>;
+        delete g.__SSR_DASHBOARD_CAPTURE__;
       }
     });
   });
@@ -58,7 +83,7 @@ async function start() {
   });
 
   server.listen(webPort, () => {
-    console.log(`🌐 SSR web server running on http://localhost:${webPort}`);
+    console.log(`🌐 Vite SSR（HTML 流式） http://127.0.0.1:${webPort}`);
     console.log(`♻️  Vite HMR websocket port: ${hmrPort}`);
   });
 }

@@ -1,54 +1,47 @@
-# tRPC Demo
+# Vite + React SSR 流式渲染（Dashboard 示例）
 
-一个最小可运行的 tRPC 全栈示例，包含 Node 服务端、React 客户端，以及基于 Vite middleware 的 SSR 开发流程。
+本仓库已从「tRPC 全栈最小示例」演进为 **无 tRPC、无 Next** 的 **Vite middleware SSR + 流式 HTML** 演示，用于对照 Next.js App Router 中 `loading.tsx` / `Suspense` 的分段展示体验。
+
+## 本分支做了什么
+
+- **移除** `@trpc/server`、`@trpc/client`、`@trpc/react-query` 及原 `server/appRouter.ts`、`server/index.ts` 等 tRPC 栈。
+- **新增** 纯 Node HTTP 路由：`GET /api/dashboard/cards`、`/revenue`、`/invoices`（见 `server/api-handlers.ts`），数据层在 `server/dashboard-data.ts`（含刻意延迟，模拟慢接口）。
+- **前端** `client/App.tsx` 使用 React 19 `use()` + `Suspense`，为卡片、营收图、发票列表分别提供 **skeleton**，慢请求只阻塞对应区块。
+- **SSR 数据路径** `client/loaders.ts`：服务端渲染时直接 `import` `dashboard-data`，并行拉取；流式边界结束后把快照注入 `window.__DASHBOARD__`，hydrate 后避免重复打 `/api`（或回退到 `/api`）。
+- **脚本**：`npm run dev:web` 启动 Vite SSR（`server/ssr.ts`）；`npm run dev:cli` 保留 CLI 入口（若仍存在）。
+
+若你需要合并回使用 tRPC 的 `main`，请在本分支外保留旧提交或从远程恢复。
 
 ## 技术栈
 
-- tRPC v11（`@trpc/server` / `@trpc/client` / `@trpc/react-query`）
-- React 19
-- TanStack React Query
-- TypeScript
-- Vite（SSR middleware 模式）
-- `tsx`（本地开发时运行 TS）
-
-## 关键技术要点
-
-- **端到端类型安全**：服务端通过 `AppRouter` 导出路由类型，客户端直接复用类型调用接口。
-- **查询 + 变更组合**：示例覆盖 `query`（列表、按 ID 查）与 `mutation`（创建、重置）两类场景。
-- **乐观更新**：`userCreate` 和 `userReset` 在前端实现了 `onMutate / onError / onSuccess` 的经典流程（先改缓存、失败回滚、成功失效重拉）。
-- **SSR + Hydration**：
-  - 服务端用 `createServerSideHelpers` 预取查询并 `dehydrate`
-  - HTML 注入 `dehydratedState`
-  - 客户端用 `HydrationBoundary` 进行缓存接管，减少首屏重复请求
-- **开发体验**：SSR 页面通过 Vite HMR 热更新，API 服务与 Web 服务分开启动，便于调试。
+- React 19（`use` / `Suspense`）
+- Vite 8（SSR middleware）
+- TypeScript、`tsx` 运行
 
 ## 本地运行
 
 ```bash
 npm install
-```
-
-启动 tRPC API 服务（默认 `http://localhost:3000`）：
-
-```bash
-npm run dev:server
-```
-
-启动 SSR Web 服务（默认 `http://localhost:5173`）：
-
-```bash
 npm run dev:web
 ```
 
-可选：运行命令行客户端演示：
+浏览器访问终端输出地址（默认 `http://localhost:5173`）。
 
 ```bash
-npm run dev:client
+npm run typecheck
 ```
 
-## 脚本说明
+## 目录结构（要点）
 
-- `npm run dev:server`：运行服务端 tRPC API
-- `npm run dev:web`：运行 SSR Web 服务（Vite middleware）
-- `npm run dev:client`：运行 Node 命令行客户端示例
-- `npm run typecheck`：TypeScript 类型检查
+| 路径 | 说明 |
+|------|------|
+| `server/ssr.ts` | Vite SSR 流式渲染与 `/api/*` 转发 |
+| `server/api-handlers.ts` | Dashboard JSON API |
+| `server/dashboard-data.ts` | 异步假数据与延迟 |
+| `client/loaders.ts` | SSR/浏览器双路径数据加载与 `__DASHBOARD__` 注入协作 |
+| `client/App.tsx` | Dashboard UI + Suspense 边界 |
+
+## 与 Next.js Streaming 的对应关系
+
+- 各区块独立 `Suspense` + fallback ≈ 页面级 `loading.tsx` + 组件级 `Suspense`。
+- 慢接口不阻塞首屏 HTML 起始流，后续区块随数据就绪再填充（具体行为以 `server/ssr.ts` 实现为准）。

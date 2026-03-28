@@ -1,258 +1,291 @@
-import { useMemo, useState } from "react";
-import { httpBatchLink } from "@trpc/client";
-import { createTRPCReact } from "@trpc/react-query";
+import { Suspense, use, useMemo, type CSSProperties } from "react";
 import {
-  HydrationBoundary,
-  QueryClient,
-  QueryClientProvider,
-  type DehydratedState,
-} from "@tanstack/react-query";
-import type { AppRouter } from "../server/appRouter.js";
+  fetchDashboardCards,
+  fetchDashboardInvoices,
+  fetchDashboardRevenue,
+} from "./loaders.js";
 
-const trpc = createTRPCReact<AppRouter>();
+const sk = {
+  pulse: {
+    background: "linear-gradient(90deg,#e5e7eb 0%,#f3f4f6 50%,#e5e7eb 100%)",
+    backgroundSize: "200% 100%",
+    animation: "dashSk 1.2s ease-in-out infinite",
+  } as CSSProperties,
+};
 
-function AppInner() {
-  const [userIdInput, setUserIdInput] = useState("1");
-  const [selectedUserId, setSelectedUserId] = useState("1");
-  const [name, setName] = useState("Bob");
-  const [age, setAge] = useState("22");
-
-  const parsedAge = useMemo(() => Number(age), [age]);
-
-  const userListQuery = trpc.userList.useQuery(undefined);
-
-  const userByIdQuery = trpc.userById.useQuery(selectedUserId, {
-    enabled: selectedUserId.trim().length > 0,
-  });
-
-  const utils = trpc.useUtils();
-
-  const createUserMutation = trpc.userCreate.useMutation({
-    // 简化版乐观更新：
-    // - 请求发出前，先把“新用户”塞进 userList 缓存
-    // - 请求失败时回滚到之前的缓存（没有就直接 invalidate）
-    // - 请求成功后再 invalidate，确保最终以服务端为准
-    onMutate: async (input) => {
-      await utils.userList.cancel();
-
-      const previous = utils.userList.getData();
-      const previousList = previous ?? [];
-      const optimisticUser = {
-        // 这里只是 demo 场景的简化做法：用当前 length 生成一个“可能”的 id
-        // 请求最终成功后会 invalidate 回服务端真实数据。
-        id: String(previousList.length + 1),
-        name: input.name,
-        age: input.age,
-      };
-
-      utils.userList.setData(undefined, (old = []) => [...old, optimisticUser]);
-      return { previous };
-    },
-    onError: (_err, _input, ctx) => {
-      if (!ctx) return;
-      if (ctx.previous) {
-        utils.userList.setData(undefined, ctx.previous);
-      } else {
-        utils.userList.invalidate();
-      }
-    },
-    onSuccess: () => {
-      utils.userList.invalidate();
-      if (selectedUserId.trim().length > 0) utils.userById.invalidate(selectedUserId);
-    },
-  });
-
-  const resetUserMutation = trpc.userReset.useMutation({
-    // 乐观地先清空列表；失败回滚；成功以 invalidate 为准
-    onMutate: async () => {
-      await utils.userList.cancel();
-
-      const previous = utils.userList.getData();
-      utils.userList.setData(undefined, []);
-      return { previous };
-    },
-    onError: (_err, _input, ctx) => {
-      if (!ctx) return;
-      if (ctx.previous) {
-        utils.userList.setData(undefined, ctx.previous);
-      } else {
-        utils.userList.invalidate();
-      }
-    },
-    onSuccess: () => {
-      utils.userList.invalidate();
-      if (selectedUserId.trim().length > 0) utils.userById.invalidate(selectedUserId);
-    },
-  });
-
+function CardsSkeleton() {
   return (
-    <main style={{ fontFamily: "system-ui, sans-serif", margin: 24, lineHeight: 1.5 }}>
-      <h1 style={{ marginBottom: 8 }}>tRPC React 调试页</h1>
-      <div style={{ color: "#666", marginBottom: 12 }}>
-        打开 DevTools 的 Network / Console 可以直接看请求与响应。
-      </div>
-
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <button disabled={userListQuery.isFetching} onClick={() => userListQuery.refetch()}>
-          获取用户列表
-        </button>
-      </div>
-
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <input value={userIdInput} onChange={(e) => setUserIdInput(e.target.value)} placeholder="输入用户 ID" />
-        <button
-          disabled={createUserMutation.isPending}
-          onClick={() => setSelectedUserId(userIdInput.trim())}
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+        gap: 16,
+      }}
+      aria-busy="true"
+    >
+      {[0, 1, 2, 3].map((i) => (
+        <div
+          key={i}
+          style={{
+            borderRadius: 8,
+            padding: 16,
+            background: "#fff",
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+          }}
         >
-          按 ID 查询
-        </button>
-      </div>
-
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="姓名" />
-        <input value={age} onChange={(e) => setAge(e.target.value)} type="number" min="1" placeholder="年龄" />
-        <button
-          disabled={createUserMutation.isPending}
-          onClick={() => createUserMutation.mutate({ name: name.trim(), age: parsedAge })}
-        >
-          创建用户
-        </button>
-        <button
-          disabled={createUserMutation.isPending || resetUserMutation.isPending}
-          onClick={() => resetUserMutation.mutate()}
-        >
-          重置数据
-        </button>
-      </div>
-
-      <style>{`
-        .resultsGrid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 12px;
-        }
-        /* 大屏时把 4 个区块分成 2x2，更符合“列表/详情 + 创建/重置”的阅读顺序 */
-        @media (min-width: 900px) {
-          .resultsGrid {
-            grid-template-columns: 1fr 1fr;
-          }
-        }
-      `}</style>
-      <div className="resultsGrid">
-        <section>
-          <h2 style={{ margin: "0 0 6px", fontSize: 14, color: "#ddd" }}>用户列表</h2>
-          <pre
-            style={{
-              background: "#111",
-              color: "#f4f4f4",
-              padding: 12,
-              borderRadius: 6,
-              height: 220,
-              boxSizing: "border-box",
-              overflow: "auto",
-            }}
-          >
-            {userListQuery.isLoading
-              ? "加载中..."
-              : userListQuery.error
-                ? `请求失败：${userListQuery.error.message}`
-                : JSON.stringify(userListQuery.data, null, 2)}
-          </pre>
-        </section>
-
-        <section>
-          <h2 style={{ margin: "0 0 6px", fontSize: 14, color: "#ddd" }}>用户详情</h2>
-          <pre
-            style={{
-              background: "#111",
-              color: "#f4f4f4",
-              padding: 12,
-              borderRadius: 6,
-              height: 220,
-              boxSizing: "border-box",
-              overflow: "auto",
-            }}
-          >
-            {userByIdQuery.isLoading
-              ? `加载中...（id=${selectedUserId}）`
-              : userByIdQuery.error
-                ? `请求失败：${userByIdQuery.error.message}`
-                : JSON.stringify(userByIdQuery.data, null, 2)}
-          </pre>
-        </section>
-
-        <section>
-          <h2 style={{ margin: "0 0 6px", fontSize: 14, color: "#ddd" }}>创建结果</h2>
-          <pre
-            style={{
-              background: "#111",
-              color: "#f4f4f4",
-              padding: 12,
-              borderRadius: 6,
-              height: 220,
-              boxSizing: "border-box",
-              overflow: "auto",
-            }}
-          >
-            {createUserMutation.isPending
-              ? "创建中..."
-              : createUserMutation.error
-                ? `请求失败：${createUserMutation.error.message}`
-                : createUserMutation.data
-                  ? JSON.stringify(createUserMutation.data, null, 2)
-                  : "尚未创建"}
-          </pre>
-        </section>
-
-        <section>
-          <h2 style={{ margin: "0 0 6px", fontSize: 14, color: "#ddd" }}>重置结果</h2>
-          <pre
-            style={{
-              background: "#111",
-              color: "#f4f4f4",
-              padding: 12,
-              borderRadius: 6,
-              height: 220,
-              boxSizing: "border-box",
-              overflow: "auto",
-            }}
-          >
-            {resetUserMutation.isPending
-              ? "重置中..."
-              : resetUserMutation.error
-                ? `请求失败：${resetUserMutation.error.message}`
-                : resetUserMutation.data
-                  ? JSON.stringify(resetUserMutation.data, null, 2)
-                  : "尚未重置"}
-          </pre>
-        </section>
-      </div>
-    </main>
+          <div style={{ ...sk.pulse, height: 12, width: "55%", borderRadius: 4, marginBottom: 12 }} />
+          <div style={{ ...sk.pulse, height: 28, width: "40%", borderRadius: 4 }} />
+        </div>
+      ))}
+    </div>
   );
 }
 
-type AppProps = {
-  dehydratedState?: DehydratedState;
-};
-
-export default function App({ dehydratedState }: AppProps) {
-  const [queryClient] = useState(() => new QueryClient());
-
-  const client = useMemo(
-    () =>
-      trpc.createClient({
-        links: [httpBatchLink({ url: "http://localhost:3000" })],
-      }),
-    [],
-  );
-
+function RevenueChartSkeleton() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <trpc.Provider client={client} queryClient={queryClient}>
-        <HydrationBoundary state={dehydratedState}>
-          <AppInner />
-        </HydrationBoundary>
-      </trpc.Provider>
-    </QueryClientProvider>
+    <div
+      style={{
+        borderRadius: 8,
+        padding: 20,
+        background: "#fff",
+        border: "1px solid #e5e7eb",
+        minHeight: 280,
+      }}
+      aria-busy="true"
+    >
+      <div style={{ ...sk.pulse, height: 14, width: "35%", borderRadius: 4, marginBottom: 20 }} />
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 200 }}>
+        {[40, 65, 35, 80, 55, 90].map((h, i) => (
+          <div
+            key={i}
+            style={{
+              flex: 1,
+              height: `${h}%`,
+              borderRadius: 4,
+              ...sk.pulse,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LatestInvoicesSkeleton() {
+  return (
+    <div
+      style={{
+        borderRadius: 8,
+        padding: 16,
+        background: "#fff",
+        border: "1px solid #e5e7eb",
+        minHeight: 280,
+      }}
+      aria-busy="true"
+    >
+      <div style={{ ...sk.pulse, height: 14, width: "45%", borderRadius: 4, marginBottom: 16 }} />
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} style={{ display: "flex", gap: 12, marginBottom: 12, alignItems: "center" }}>
+          <div style={{ ...sk.pulse, width: 40, height: 40, borderRadius: "50%" }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ ...sk.pulse, height: 10, width: "50%", borderRadius: 4, marginBottom: 8 }} />
+            <div style={{ ...sk.pulse, height: 8, width: "35%", borderRadius: 4 }} />
+          </div>
+          <div style={{ ...sk.pulse, height: 14, width: 56, borderRadius: 4 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CardWrapper() {
+  const data = use(useMemo(() => fetchDashboardCards(), []));
+  const items = [
+    { title: "Collected", value: `$${data.totalPaid}` },
+    { title: "Pending", value: `$${data.totalPending}` },
+    { title: "Total Invoices", value: String(data.invoiceCount) },
+    { title: "Total Customers", value: String(data.customerCount) },
+  ];
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+        gap: 16,
+      }}
+    >
+      {items.map((item) => (
+        <div
+          key={item.title}
+          style={{
+            borderRadius: 8,
+            padding: 16,
+            background: "#fff",
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+          }}
+        >
+          <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>{item.title}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#111827" }}>{item.value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RevenueChart() {
+  const rows = use(useMemo(() => fetchDashboardRevenue(), []));
+  const max = Math.max(...rows.map((r) => r.amount), 1);
+  return (
+    <div style={{ borderRadius: 8, padding: 20, background: "#fff", border: "1px solid #e5e7eb" }}>
+      <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#111827" }}>
+        Recent Revenue
+      </h2>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 220, paddingTop: 8 }}>
+        {rows.map((r) => (
+          <div key={r.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div
+              style={{
+                width: "100%",
+                maxWidth: 48,
+                height: `${Math.round((r.amount / max) * 180)}px`,
+                minHeight: 8,
+                background: "linear-gradient(180deg,#3b82f6,#1d4ed8)",
+                borderRadius: 4,
+              }}
+            />
+            <span style={{ marginTop: 8, fontSize: 12, color: "#6b7280" }}>{r.month}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LatestInvoices() {
+  const list = use(useMemo(() => fetchDashboardInvoices(), []));
+  return (
+    <div style={{ borderRadius: 8, padding: 16, background: "#fff", border: "1px solid #e5e7eb" }}>
+      <h2 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 600, color: "#111827" }}>
+        Latest Invoices
+      </h2>
+      <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+        {list.map((inv) => (
+          <li
+            key={inv.id}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: "10px 0",
+              borderBottom: "1px solid #f3f4f6",
+            }}
+          >
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                background: "#e0e7ff",
+                display: "grid",
+                placeItems: "center",
+                fontSize: 14,
+                fontWeight: 600,
+                color: "#3730a3",
+              }}
+            >
+              {inv.name.charAt(0)}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 500, color: "#111827", fontSize: 14 }}>{inv.name}</div>
+              <div style={{ fontSize: 12, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {inv.email}
+              </div>
+            </div>
+            <div style={{ fontWeight: 600, color: "#111827" }}>${inv.amount.toFixed(2)}</div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <div style={{ display: "flex", minHeight: "100vh", background: "#f9fafb" }}>
+      <style>{`
+        @keyframes dashSk {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+        @media (min-width: 900px) {
+          .dashLower { grid-template-columns: 1.4fr 1fr !important; }
+        }
+      `}</style>
+
+      <aside
+        style={{
+          width: 200,
+          flexShrink: 0,
+          background: "#1e293b",
+          color: "#e2e8f0",
+          padding: 24,
+          fontSize: 14,
+        }}
+      >
+        <div style={{ fontWeight: 700, marginBottom: 24, fontSize: 16 }}>Acme</div>
+        <nav style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {["Dashboard", "Invoices", "Customers"].map((label, i) => (
+            <div
+              key={label}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 6,
+                background: i === 0 ? "rgba(255,255,255,0.1)" : "transparent",
+              }}
+            >
+              {label}
+            </div>
+          ))}
+        </nav>
+      </aside>
+
+      <div style={{ flex: 1, padding: "32px 40px", maxWidth: 1100 }}>
+        <h1
+          style={{
+            margin: "0 0 8px",
+            fontSize: 28,
+            fontWeight: 700,
+            color: "#111827",
+            fontFamily: "Georgia, 'Times New Roman', serif",
+          }}
+        >
+          Dashboard
+        </h1>
+        <p style={{ margin: "0 0 24px", color: "#6b7280", fontSize: 14, maxWidth: 720, lineHeight: 1.65 }}>
+          <strong>不</strong>在发 HTML 前阻塞拉齐全部数据：各区块在 SSR 里并行 <code style={{ fontSize: 13 }}>import</code>{" "}
+          <code style={{ fontSize: 13 }}>dashboard-data</code>，先流式出壳与骨架，再分段补全。流结束后在{" "}
+          <code style={{ fontSize: 13 }}>onAllReady</code> 把本次解析结果写入{" "}
+          <code style={{ fontSize: 13 }}>window.__DASHBOARD__</code>，hydrate 时<strong>首屏 0 次</strong>{" "}
+          <code style={{ fontSize: 13 }}>/api</code>（无快照时才回退 fetch）。
+        </p>
+
+        <section style={{ marginBottom: 24 }}>
+          <Suspense fallback={<CardsSkeleton />}>
+            <CardWrapper />
+          </Suspense>
+        </section>
+
+        <div className="dashLower" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24 }}>
+          <Suspense fallback={<RevenueChartSkeleton />}>
+            <RevenueChart />
+          </Suspense>
+          <Suspense fallback={<LatestInvoicesSkeleton />}>
+            <LatestInvoices />
+          </Suspense>
+        </div>
+      </div>
+    </div>
   );
 }
